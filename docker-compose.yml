@@ -3,4 +3,5 @@ version: '3'
 services:
   notif:
     build: .
-
+    env_file:
+      - .env
