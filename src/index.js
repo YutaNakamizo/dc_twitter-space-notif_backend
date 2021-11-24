@@ -1,8 +1,9 @@
 import cron from 'node-cron';
-
 import * as twitter from './twitter.js';
 
-twitter.getUser('kuzichaki').then(console.log)
+const main = () => {
+  twitter.getSpaceInfo('TakumaNitori').then(console.log).catch(console.error);
+};
 
-cron.schedule('*/5 * * * * *', () => console.log('5 秒毎実行'));
+cron.schedule('*/5 * * * * *', main);
 
