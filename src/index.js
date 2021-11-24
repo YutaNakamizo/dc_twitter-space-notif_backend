@@ -6,9 +6,7 @@ import * as twitter from './twitter.js';
 const __dirname = path.dirname(new URL(import.meta.url).pathname)
 
 const main = () => {
-  const usernameList = [
-    'TakumaNitori',
-  ];
+  const usernameList = process.env.NOTIF_TARGETS.replace(/ /g, '').split(',');
   
   Promise.all(usernameList.map(username => {
     return twitter.getSpacesByUsername(username).then(currentSpaces => {
@@ -49,5 +47,8 @@ const main = () => {
   }));
 };
 
-cron.schedule('*/5 * * * * *', main);
+cron.schedule(
+  process.env.NOTIF_INTERVAL || '* */5 * * * *',
+  main
+);
 
