@@ -9,7 +9,7 @@ export const getUser = (username) => {
   return twitter.v2.userByUsername(username);
 };
 
-export const getSpaceInfo = (username) => {
+export const getSpacesByUsername = (username) => {
   return getUser(username).then(user => {
     return twitter.v2.spacesByCreators(user.data.id);
   });
