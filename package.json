@@ -1,0 +1,25 @@
+{
+  "name": "twitter-space-notif-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YutaNakamizo/twitter-space-notif-backend.git"
+  },
+  "keywords": [
+    "Twitter"
+  ],
+  "author": "Yuta NAKAMIZO <yuta.nakamizo@ggtk.app> (https://ggtk.app)",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/YutaNakamizo/twitter-space-notif-backend/issues"
+  },
+  "homepage": "https://github.com/YutaNakamizo/twitter-space-notif-backend#readme",
+  "dependencies": {
+    "node-cron": "^3.0.0"
+  }
+}
