@@ -7,20 +7,23 @@ const __dirname = path.dirname(new URL(import.meta.url).pathname)
 
 const main = () => {
   const usernameList = process.env.NOTIF_TARGETS.replace(/ /g, '').split(',');
+  fs.readFile(
+    path.join(__dirname, './tmp/state.json'),
+    'utf8'
+  ).then(_textPrevious => {
+    const previousSpacesAll = JSON.parse(_textPrevious);
+    const currentSpacesAll = {};
+
+    Promise.all(usernameList.map(username => {
+      return twitter.getSpacesByUsername(username).then(currentSpaces => {
+        const previousSpaces = previousSpacesAll[username] || { data: [] };
+        if(!currentSpaces.data) currentSpaces.data = [];
+        //console.log(currentSpaces);
   
-  Promise.all(usernameList.map(username => {
-    return twitter.getSpacesByUsername(username).then(currentSpaces => {
-      if(!currentSpaces.data) currentSpaces.data = [];
-      //console.log(currentSpaces);
-
-      // read previous state
-      fs.readFile(
-        path.join(__dirname, './tmp/', `${username}.json`),
-        'utf8'
-      ).then(_textPrevious => {
-        const previousSpaces = JSON.parse(_textPrevious);
+        // read previous state
+        
         if(!previousSpaces.data) previousSpaces.data = [];
-
+  
         // compare state
         const flags = {
           removed: [],
@@ -34,17 +37,18 @@ const main = () => {
           const created = previousSpaces.data.findIndex(prev => prev.id === curr.id) === -1;
           if(created) flags.created.push(curr);
         }
-
+  
         console.log(JSON.stringify(flags, null, 2))
-        
-        // rewrite current state
-        fs.writeFile(
-          path.join(__dirname, './tmp/', `${username}.json`),
-          JSON.stringify(currentSpaces)
-        );
+        currentSpacesAll[username] = currentSpaces;
       });
+    })).then(() => {
+      // rewrite current state
+      fs.writeFile(
+        path.join(__dirname, './tmp/state.json'),
+        JSON.stringify(currentSpacesAll)
+      );
     });
-  }));
+  });
 };
 
 cron.schedule(
