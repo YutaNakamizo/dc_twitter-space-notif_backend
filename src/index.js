@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import path from 'path';
 import fs from 'fs/promises';
 import * as twitter from './twitter.js';
+import * as restapi from './restapi.js'
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname)
 
@@ -55,4 +56,7 @@ cron.schedule(
   process.env.NOTIF_INTERVAL || '* */5 * * * *',
   main
 );
+
+
+restapi.launch();
 
