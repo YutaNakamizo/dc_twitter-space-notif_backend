@@ -1,22 +1,38 @@
 import express from 'express';
+import cors from 'cors';
+import { initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 
 const app = express();
+app.use(
+  cors({
+    origin: process.env.NOTIF_ALLOW_ORIGIN,
+  })
+);
+
+// Initialize Firebase Admin SDK
+const firebase = initializeApp();
+const firebaseAuth = getAuth(firebase);
 
 export const launch = () => {
   app.get('/', (req, res) => {
-    res.status(200).send('Hello from Express.js');
+    return res.status(200).send('Hello from Express.js');
   });
   
   // Test of Firebase Auth
-  app.get('/demo', (req, res) => {
+  app.post('/api/debug-with-token', (req, res) => {
     // Verify token
-    const hasAccess = true;
+    const [ authType, idToken ] = req.get('Authorization').split(' ');
 
-    if(!hasAccess) {
-      return res.status(403).send('Access Denied');
+    if(!authType === 'Bearer') {
+      return res.status(401).send('Invalid type');
     }
 
-    return res.status(200).send('Hello from Express.js with Firebase Auth Token!');
+    return firebaseAuth.verifyIdToken(idToken, true).then((decodedToken) => {
+      return res.status(200).send('Hello from Express.js with Firebase Auth Token!');
+    }).catch(err => {
+      return res.status(401).send('Invalid token');
+    });
   });
   
   // Listen

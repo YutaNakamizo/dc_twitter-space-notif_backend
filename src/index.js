@@ -7,7 +7,7 @@ import * as restapi from './restapi.js'
 const __dirname = path.dirname(new URL(import.meta.url).pathname)
 
 const main = () => {
-  const usernameList = process.env.NOTIF_TARGETS.replace(/ /g, '').split(',');
+  /*const usernameList = process.env.NOTIF_TARGETS.replace(/ /g, '').split(',');
   fs.readFile(
     path.join(__dirname, './tmp/state.json'),
     'utf8'
@@ -49,7 +49,7 @@ const main = () => {
         JSON.stringify(currentSpacesAll)
       );
     });
-  });
+  });*/
 };
 
 cron.schedule(
