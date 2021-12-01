@@ -2,11 +2,12 @@ import cron from 'node-cron';
 import path from 'path';
 import fs from 'fs/promises';
 import * as twitter from './twitter.js';
+import * as restapi from './restapi.js'
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname)
 
 const main = () => {
-  const usernameList = process.env.NOTIF_TARGETS.replace(/ /g, '').split(',');
+  /*const usernameList = process.env.NOTIF_TARGETS.replace(/ /g, '').split(',');
   fs.readFile(
     path.join(__dirname, './tmp/state.json'),
     'utf8'
@@ -48,11 +49,14 @@ const main = () => {
         JSON.stringify(currentSpacesAll)
       );
     });
-  });
+  });*/
 };
 
 cron.schedule(
   process.env.NOTIF_INTERVAL || '* */5 * * * *',
   main
 );
+
+
+restapi.launch();
 
