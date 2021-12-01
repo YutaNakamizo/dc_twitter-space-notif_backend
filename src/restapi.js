@@ -18,20 +18,24 @@ export const launch = () => {
   app.get('/', (req, res) => {
     return res.status(200).send('Hello from Express.js');
   });
-  
-  // Test of Firebase Auth
-  app.post('/api/debug-with-token', (req, res) => {
-    // Verify token
+
+  // Verify token
+  const requireIdToken = (req, res) => {
     const [ authType, idToken ] = req.get('Authorization').split(' ');
 
     if(!authType === 'Bearer') {
       return res.status(401).send('Invalid type');
     }
 
-    return firebaseAuth.verifyIdToken(idToken, true).then((decodedToken) => {
-      return res.status(200).send('Hello from Express.js with Firebase Auth Token!');
-    }).catch(err => {
+    return firebaseAuth.verifyIdToken(idToken, true).catch(err => {
       return res.status(401).send('Invalid token');
+    });
+  };
+  
+  // Test of Firebase Auth
+  app.post('/api/debug-with-token', (req, res) => {
+    return requireIdToken(req, res).then(decodedToken => {
+      return res.status(200).send('Hello from Express.js with Firebase Auth Token!');
     });
   });
   
