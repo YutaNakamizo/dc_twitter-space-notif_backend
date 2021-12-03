@@ -3,6 +3,7 @@ import cors from 'cors';
 import validator from 'validator';
 import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 
 const app = express();
 app.use(express.json());
@@ -15,6 +16,7 @@ app.use(
 // Initialize Firebase Admin SDK
 const firebase = initializeApp();
 const firebaseAuth = getAuth(firebase);
+const firestore = getFirestore(firebase);
 
 export const launch = () => {
   app.get('/', (req, res) => {
@@ -123,9 +125,20 @@ export const launch = () => {
 
       console.log(uid, label, dest, JSON.stringify(destDetails));
 
-      return res.status(200).send({
-        data: {
-        },
+      return firestore.collection('endpoints').add({
+        owner: uid,
+        label,
+        dest,
+        destDetails,
+      }).then(docRef => {
+        return res.status(200).send({
+          data: {
+            id: docRef.id,
+          },
+        });
+      }).catch(err => {
+        console.error(err);
+        return res.status(500).send('Internal error occured');
       });
     });
   });
