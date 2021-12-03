@@ -1,9 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import validator from 'validator';
-import { initializeApp } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
+import {
+  auth,
+  firestore,
+} from './firebase.js'; 
 
 const app = express();
 app.use(express.json());
@@ -12,11 +13,6 @@ app.use(
     origin: process.env.NOTIF_ALLOW_ORIGIN,
   })
 );
-
-// Initialize Firebase Admin SDK
-const firebase = initializeApp();
-const firebaseAuth = getAuth(firebase);
-const firestore = getFirestore(firebase);
 
 export const launch = () => {
   app.get('/', (req, res) => {
@@ -31,7 +27,7 @@ export const launch = () => {
       return res.status(401).send('Invalid type');
     }
 
-    return firebaseAuth.verifyIdToken(idToken, true).catch(err => {
+    return auth.verifyIdToken(idToken, true).catch(err => {
       return res.status(401).send('Invalid token');
     });
   };
