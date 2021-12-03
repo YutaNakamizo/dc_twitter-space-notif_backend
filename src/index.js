@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import path from 'path';
 import fs from 'fs/promises';
+import axios from 'axios';
 import * as twitter from './twitter.js';
 import * as restapi from './restapi.js'
 import {
@@ -50,6 +51,76 @@ const main = () => {
           const {
             id,
           } = created;
+
+          // notify
+          firestore.collection('endpoints').where('username', '==', username).get().then(querySnap => {
+            if(querySnap.empty) return;
+            Promise.all(querySnap.docs.map(endpoint => {
+              const {
+                dest,
+                destDetails,
+              } = endpoint.data();
+              console.log(dest, destDetails);
+
+              const config = {
+                headers: {
+                },
+              };
+
+              switch(dest) {
+                case 'discord-webhook': {
+                  const {
+                    url,
+                  } = destDetails;
+                  config.headers['Content-Type'] = 'application/json';
+                  config.method = 'post';
+                  config.url = url;
+                  config.data = {
+                    content: `@${username} が Twitter Space を開始しました.\rhttps://twitter.com/i/spaces/${id}`,
+                  };
+                  break;
+                }
+                case 'json': {
+                  const {
+                    method,
+                    url,
+                  } = destDetails;
+                  config.headers['Content-Type'] = 'application/json';
+                  config.method = method.toLowerCase();
+                  config.url = url;
+                  switch(method) {
+                    case 'POST': {
+                      config.data = {
+                        username,
+                        id,
+                      };
+                    }
+                    case 'GET': {
+                      config.params = {
+                        username,
+                        id,
+                      };
+                    }
+                  }
+                  break;
+                }
+                default: {
+                  return;
+                }
+              }
+              
+              return axios(config).then(() => {
+                console.log(`Sent to ${config.url}.`);
+              }).catch(err => {
+                console.error(err);
+                return;
+              });
+            }));
+          }).catch(err => {
+            console.error(err);
+            return;
+          });
+
           return firestore.doc(`spaces/${id}`).set({
             username,
             startAt: FieldValue.serverTimestamp(),
