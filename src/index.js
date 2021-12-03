@@ -3,6 +3,10 @@ import path from 'path';
 import fs from 'fs/promises';
 import * as twitter from './twitter.js';
 import * as restapi from './restapi.js'
+import {
+  firestore,
+  FieldValue,
+} from './firebase.js';
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname)
 
@@ -41,6 +45,33 @@ const main = () => {
   
         console.log(JSON.stringify(flags, null, 2))
         currentSpacesAll[username] = currentSpaces;
+
+        Promise.all(flags.created.map(created => {
+          const {
+            id,
+          } = created;
+          return firestore.doc(`spaces/${id}`).set({
+            username,
+            startAt: FieldValue.serverTimestamp(),
+          }).catch(err => {
+            console.error(err);
+            return;
+          });
+        }));
+
+        Promise.all(flags.removed.map(removed => {
+          const {
+            id,
+          } = removed;
+          return firestore.doc(`spaces/${id}`).update({
+            endAt: FieldValue.serverTimestamp(),
+          }).catch(err => {
+            console.error(err);
+            return;
+          });
+        }));
+
+        return;
       });
     })).then(() => {
       // rewrite current state
