@@ -44,13 +44,17 @@ export const launch = () => {
   //// Register
   app.post('/api/endpoints', (req, res) => {
     const {
+      username,
       label,
       dest,
       destDetails,
     } = req.body;
-    
+
     if(
       (
+        typeof username !== 'string'
+        || username.trim() === ''
+      ) || (
         typeof label !== 'string'
         || label.trim() === ''
       ) || (
@@ -123,6 +127,7 @@ export const launch = () => {
 
       return firestore.collection('endpoints').add({
         owner: uid,
+        username,
         label,
         dest,
         destDetails,
