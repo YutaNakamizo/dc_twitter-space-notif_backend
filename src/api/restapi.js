@@ -123,7 +123,7 @@ export const launch = () => {
         uid,
       } = decodedToken;
 
-      console.log(uid, label, dest, JSON.stringify(destDetails));
+      console.log('[POST /api/endpoints]', uid, label, dest, JSON.stringify(destDetails));
 
       return firestore.collection('endpoints').add({
         owner: uid,
@@ -137,6 +137,36 @@ export const launch = () => {
             id: docRef.id,
           },
         });
+      }).catch(err => {
+        console.error(err);
+        return res.status(500).send('Internal error occured');
+      });
+    });
+  });
+
+  //// List
+  app.get('/api/endpoints', (req, res) => {
+    return requireIdToken(req, res).then(decodedToken => {
+      const {
+        uid,
+      } = decodedToken;
+
+      console.log('[GET /api/endpoints]', uid);
+
+      const query = firestore.collection('endpoints').where('owner', '==', uid);
+      return query.get().then(querySnapshot => {
+        const rtnEndpoints = [];
+        
+        for(const doc of querySnapshot.docs) {
+          rtnEndpoints.push({
+            id: doc.id,
+            createTime: doc.createTime.toDate().getTime(),
+            updateTime: doc.updateTime.toDate().getTime(),
+            ...doc.data(),
+          });
+        }
+
+        return res.status(200).send(rtnEndpoints);
       }).catch(err => {
         console.error(err);
         return res.status(500).send('Internal error occured');
