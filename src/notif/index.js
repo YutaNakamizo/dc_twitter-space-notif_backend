@@ -3,18 +3,17 @@ import path from 'path';
 import fs from 'fs/promises';
 import axios from 'axios';
 import * as twitter from './twitter.js';
-import * as restapi from './restapi.js'
 import {
   firestore,
   FieldValue,
-} from './firebase.js';
+} from '../common/firebase.js';
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname)
 
 const main = () => {
   const usernameList = process.env.NOTIF_TARGETS.replace(/ /g, '').split(',');
   fs.readFile(
-    path.join(__dirname, './tmp/state.json'),
+    path.join(__dirname, '../../tmp/state.json'),
     'utf8'
   ).then(_textPrevious => {
     const previousSpacesAll = JSON.parse(_textPrevious);
@@ -147,7 +146,7 @@ const main = () => {
     })).then(() => {
       // rewrite current state
       fs.writeFile(
-        path.join(__dirname, './tmp/state.json'),
+        path.join(__dirname, '../../tmp/state.json'),
         JSON.stringify(currentSpacesAll)
       );
     });
@@ -158,7 +157,4 @@ cron.schedule(
   process.env.NOTIF_INTERVAL || '* */5 * * * *',
   main
 );
-
-
-restapi.launch();
 

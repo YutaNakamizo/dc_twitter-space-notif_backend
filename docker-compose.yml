@@ -2,8 +2,27 @@ version: '3'
 
 services:
   notif:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile-notif
     env_file:
-      - .env
+      - ./notif/.env
+    volumes:
+      - "./node_modules:/usr/src/notif-app/node_modules"
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile-api
+    env_file:
+      - ./api/.env
     ports:
-      - "443:8080"
+      - "$PORT:8080"
+    volumes:
+      - "./node_modules:/usr/src/api-app/node_modules"
+
+networks:
+  notif_net:
+    driver: bridge
+  api_net:
+    driver: bridge
+
