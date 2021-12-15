@@ -4,7 +4,7 @@ import validator from 'validator';
 import {
   auth,
   firestore,
-} from './firebase.js'; 
+} from '../common/firebase.js'; 
 
 const app = express();
 app.use(express.json());
