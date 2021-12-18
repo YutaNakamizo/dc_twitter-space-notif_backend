@@ -174,6 +174,112 @@ export const launch = () => {
     });
   });
   
+  //// Update
+  app.put('/api/endpoints/:id', (req, res) => {
+    const {
+      id,
+    } = req.params;
+
+    const {
+      username,
+      label,
+      dest,
+      destDetails,
+    } = req.body;
+
+    if(
+      (
+        typeof username !== 'string'
+        || username.trim() === ''
+      ) || (
+        typeof label !== 'string'
+        || label.trim() === ''
+      ) || (
+        typeof dest !== 'string'
+      ) || (() => {
+        switch(dest) {
+          case 'discord-webhook': {
+            const {
+              url,
+            } = destDetails;
+
+            return !(
+              validator.isURL(url, {
+                require_protocol: true,
+                require_valid_protocol: true,
+                protocols: [
+                  'http',
+                  'https',
+                ],
+                require_host: true,
+                require_port: false,
+                allow_protocol_relative_urls: false,
+                allow_fragments: true,
+                allow_query_components: true,
+                validate_length: true,
+              })
+              && url.startsWith('https://discord.com/api/webhooks/')
+            );
+          }
+          case 'json': {
+            const {
+              method,
+              url,
+            } = destDetails;
+
+            return !(
+              [ 'POST', 'GET' ].includes(method)
+              && (
+                validator.isURL(url, {
+                  require_protocol: true,
+                  require_valid_protocol: true,
+                  protocols: [
+                    'http',
+                    'https',
+                  ],
+                  require_host: true,
+                  require_port: false,
+                  allow_protocol_relative_urls: false,
+                  allow_fragments: true,
+                  allow_query_components: true,
+                  validate_length: true,
+                })
+              )
+            );
+          }
+          default:
+            return true;
+        }
+      })()
+    ) {
+      return res.status(400).send('Bad request body');
+    }
+
+    return requireIdToken(req, res).then(decodedToken => {
+      const {
+        uid,
+      } = decodedToken;
+
+      console.log(`[PUT /api/endpoints/${id}]`, uid);
+
+      return firestore.doc(`endpoints/${id}`).update({
+        username,
+        label,
+        dest,
+        destDetails,
+      }).then(() => {
+        return res.status(200).send({
+          data: {
+            id,
+          },
+        });
+      }).catch(err => {
+        console.error(err);
+        return res.status(404).send('Endpoint does not exist');
+      });
+    });
+  });
+  
 
   // Listen
   app.listen(8080, () => {
