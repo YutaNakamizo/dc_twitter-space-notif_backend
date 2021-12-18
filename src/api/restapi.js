@@ -11,6 +11,8 @@ app.use(express.json());
 app.use(
   cors({
     origin: process.env.NOTIF_ALLOW_ORIGIN,
+    methods: [ 'GET', 'HEAD', 'POST', 'PUT', 'DELETE' ],
+    preflightContinue: true,
   })
 );
 
