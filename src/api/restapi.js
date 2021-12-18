@@ -260,22 +260,33 @@ export const launch = () => {
         uid,
       } = decodedToken;
 
-      console.log(`[PUT /api/endpoints/${id}]`, uid);
+      const targetDocRef = firestore.doc(`endpoints/${id}`);
+      return targetDocRef.get().then(doc => {
+        if(!doc.exists) {
+          return res.status(404).send('Endpoint does not exist');
+        }
 
-      return firestore.doc(`endpoints/${id}`).update({
-        username,
-        label,
-        dest,
-        destDetails,
-      }).then(() => {
-        return res.status(200).send({
-          data: {
-            id,
-          },
+        if(!doc.data().owner === id) {
+          return res.status(403).send('You don\'t have access');
+        }
+
+        console.log(`[PUT /api/endpoints/${id}]`, uid);
+
+        return targetDocRef.update({
+          username,
+          label,
+          dest,
+          destDetails,
+        }).then(() => {
+          return res.status(200).send({
+            data: {
+              id,
+            },
+          });
+        }).catch(err => {
+          console.error(err);
+          return res.status(404).send('Endpoint does not exist');
         });
-      }).catch(err => {
-        console.error(err);
-        return res.status(404).send('Endpoint does not exist');
       });
     });
   });
