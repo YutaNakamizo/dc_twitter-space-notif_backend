@@ -279,6 +279,44 @@ export const launch = () => {
       });
     });
   });
+
+
+  /// Remove
+  app.delete('/api/endpoints/:id', (req, res) => {
+    const {
+      id,
+    } = req.params;
+
+    return requireIdToken(req, res).then(decodedToken => {
+      const {
+        uid,
+      } = decodedToken;
+      
+      const targetDocRef = firestore.doc(`endpoints/${id}`);
+      return targetDocRef.get().then(doc => {
+        if(!doc.exists) {
+          return res.status(404).send('Endpoint does not exist');
+        }
+
+        if(!doc.data().owner === id) {
+          return res.status(403).send('You don\'t have access');
+        }
+        
+        console.log(`[DELETE /api/endpoints/${id}]`, uid);
+
+        return targetDocRef.delete().then(result => {
+          return res.status(200).send({
+            data: {
+              id,
+            },
+          });
+        }).catch(err => {
+          console.error(err);
+          return res.status(500).send('Internal error occured');
+        });
+      });
+    });
+  });
   
 
   // Listen
