@@ -10,7 +10,9 @@ const app = express();
 app.use(express.json());
 app.use(
   cors({
-    origin: process.env.NOTIF_ALLOW_ORIGIN,
+    origin: process.env.ALLOW_ORIGIN,
+    methods: [ 'GET', 'HEAD', 'POST', 'PUT', 'DELETE' ],
+    preflightContinue: true,
   })
 );
 
