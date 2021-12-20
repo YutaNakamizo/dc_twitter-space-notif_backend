@@ -19,136 +19,173 @@ const main = () => {
     const previousSpacesAll = JSON.parse(_textPrevious);
     const currentSpacesAll = {};
 
-    Promise.all(usernameList.map(username => {
-      return twitter.getSpacesByUsername(username).then(currentSpaces => {
-        const previousSpaces = previousSpacesAll[username] || { data: [] };
-        if(!currentSpaces.data) currentSpaces.data = [];
-        //console.log(currentSpaces);
+    Promise.allSettled(usernameList.map(username => {
+      return new Promise((resolveHandleUser, rejectHandleUser) => {
+        return twitter.getSpacesByUsername(username).then(currentSpaces => {
+          const previousSpaces = previousSpacesAll[username] || { data: [] };
+          if(!currentSpaces.data) currentSpaces.data = [];
+          //console.log(currentSpaces);
   
-        // read previous state
-        
-        if(!previousSpaces.data) previousSpaces.data = [];
+          // read previous state
+          
+          if(!previousSpaces.data) previousSpaces.data = [];
   
-        // compare state
-        const flags = {
-          removed: [],
-          created: [],
-        };
-        for(const prev of previousSpaces.data) {
-          const removed = currentSpaces.data.findIndex(curr => curr.id === prev.id) === -1;
-          if(removed) flags.removed.push(prev);
-        }
-        for(const curr of currentSpaces.data) {
-          const created = previousSpaces.data.findIndex(prev => prev.id === curr.id) === -1;
-          if(created) flags.created.push(curr);
-        }
+          // compare state
+          const flags = {
+            removed: [],
+            created: [],
+          };
+          for(const prev of previousSpaces.data) {
+            const removed = currentSpaces.data.findIndex(curr => curr.id === prev.id) === -1;
+            if(removed) flags.removed.push(prev);
+          }
+          for(const curr of currentSpaces.data) {
+            const created = previousSpaces.data.findIndex(prev => prev.id === curr.id) === -1;
+            if(created) flags.created.push(curr);
+          }
   
-        console.log(JSON.stringify(flags, null, 2))
-        currentSpacesAll[username] = currentSpaces;
+          console.log(JSON.stringify(flags, null, 2))
+          currentSpacesAll[username] = currentSpaces;
+          
+          Promise.allSettled([
+            Promise.allSettled(flags.created.map(created => {
+              return new Promise((resolveHandleCreated, rejectHandleCreated) => {
+                const {
+                  id,
+                } = created;
+                
+                // handle created
+                Promise.allSettled([
+                  new Promise((resolveNotifAll, rejectNotifAll) => {
+                    // notify
+                    firestore.collection('endpoints').where('username', '==', username).get().then(querySnap => {
+                      if(querySnap.empty) resolveNotifAll();
+                      Promise.allSettled(querySnap.docs.map(endpoint => {
+                        return new Promise((resolveNotif, rejectNotif) => { 
+                          const {
+                            dest,
+                            destDetails,
+                          } = endpoint.data();
+                          console.log(dest, destDetails);
 
-        Promise.all(flags.created.map(created => {
-          const {
-            id,
-          } = created;
+                          const config = {
+                            headers: {
+                            },
+                          };
 
-          // notify
-          firestore.collection('endpoints').where('username', '==', username).get().then(querySnap => {
-            if(querySnap.empty) return;
-            Promise.all(querySnap.docs.map(endpoint => {
-              const {
-                dest,
-                destDetails,
-              } = endpoint.data();
-              console.log(dest, destDetails);
-
-              const config = {
-                headers: {
-                },
-              };
-
-              switch(dest) {
-                case 'discord-webhook': {
-                  const {
-                    url,
-                  } = destDetails;
-                  config.headers['Content-Type'] = 'application/json';
-                  config.method = 'post';
-                  config.url = url;
-                  config.data = {
-                    content: `@${username} が Twitter Space を開始しました.\rhttps://twitter.com/i/spaces/${id}`,
-                  };
-                  break;
-                }
-                case 'json': {
-                  const {
-                    method,
-                    url,
-                  } = destDetails;
-                  config.headers['Content-Type'] = 'application/json';
-                  config.method = method.toLowerCase();
-                  config.url = url;
-                  switch(method) {
-                    case 'POST': {
-                      config.data = {
-                        username,
-                        id,
-                      };
-                    }
-                    case 'GET': {
-                      config.params = {
-                        username,
-                        id,
-                      };
-                    }
-                  }
-                  break;
-                }
-                default: {
-                  return;
-                }
-              }
-              
-              return axios(config).then(() => {
-                console.log(`Sent to ${config.url}.`);
-              }).catch(err => {
-                console.error(err);
-                return;
+                          switch(dest) {
+                            case 'discord-webhook': {
+                              const {
+                                url,
+                              } = destDetails;
+                              config.headers['Content-Type'] = 'application/json';
+                              config.method = 'post';
+                              config.url = url;
+                              config.data = {
+                                content: `@${username} が Twitter Space を開始しました.\rhttps://twitter.com/i/spaces/${id}`,
+                              };
+                              break;
+                            }
+                            case 'json': {
+                              const {
+                                method,
+                                url,
+                              } = destDetails;
+                              config.headers['Content-Type'] = 'application/json';
+                              config.method = method.toLowerCase();
+                              config.url = url;
+                              switch(method) {
+                                case 'POST': {
+                                  config.data = {
+                                    username,
+                                    id,
+                                  };
+                                }
+                                case 'GET': {
+                                  config.params = {
+                                    username,
+                                    id,
+                                  };
+                                }
+                              }
+                              break;
+                            }
+                            default: {
+                              return;
+                            }
+                          }
+                          
+                          axios(config).then(() => {
+                            console.log(`Sent to ${config.url}. (id: ${endpoint.id})`);
+                            resolveNotif(endpoint.id);
+                          }).catch(err => {
+                            console.error(`Failed to send to ${config.url}. (id: ${endpoint.id}).`, err);
+                            rejectNotif(err);
+                          });
+                        });
+                      })).then(notifResults => {
+                        const resolvedCount = notifResults.filter(r => r.status === 'fulfilled').length;
+                        const rejectedCount = notifResults.filter(r => r.status === 'rejected').length;
+                        console.log(`${resolvedCount}/${notifResults.length} notified. (${rejectedCount} failed)`);
+                        resolveNotifAll({
+                          resolvedCount,
+                          rejectedCount,
+                        });
+                      });
+                    }).catch(err => {
+                      console.error(err);
+                      rejectNotifAll(err);
+                    });
+                  }),
+                  new Promise((resolveStore, rejectStore) => {
+                    // store start
+                    firestore.doc(`spaces/${id}`).set({
+                      username,
+                      startAt: FieldValue.serverTimestamp(),
+                    }).then(() => {
+                      console.log(`Stored space ${id}.`);
+                      resolveStore(id);
+                    }).catch(err => {
+                      console.error(`Failed to store space ${id}`, err);
+                      rejectStore(err);
+                    });
+                  }),
+                ]).then(handleCreatedResult => {
+                  resolveHandleCreated(id);
+                });
               });
-            }));
-          }).catch(err => {
-            console.error(err);
-            return;
-          });
+            })),
+            Promise.allSettled(flags.removed.map(removed => {
+              return new Promise((resolveHandleRemoved, rejectHandleRemoved) => {
+                const {
+                  id,
+                } = removed;
 
-          return firestore.doc(`spaces/${id}`).set({
-            username,
-            startAt: FieldValue.serverTimestamp(),
-          }).catch(err => {
-            console.error(err);
-            return;
+                // store
+                return firestore.doc(`spaces/${id}`).update({
+                  endAt: FieldValue.serverTimestamp(),
+                }).then(() => {
+                  console.log(`Stored removed time of ${id}.`);
+                  resolveHandleRemoved(id);
+                }).catch(err => {
+                  console.error(`Failed to store removed time of ${id}.`, err);
+                  rejectHandleRemoved(err);
+                });
+              });
+            })),
+          ]).then(handleUserResult => {
+            console.log(`Completed processing @${username}.`);
+            resolveHandleUser(username);
           });
-        }));
-
-        Promise.all(flags.removed.map(removed => {
-          const {
-            id,
-          } = removed;
-          return firestore.doc(`spaces/${id}`).update({
-            endAt: FieldValue.serverTimestamp(),
-          }).catch(err => {
-            console.error(err);
-            return;
-          });
-        }));
-
-        return;
+        });
       });
-    })).then(() => {
+    })).then(resultHandleUserAll => {
       // rewrite current state
       fs.writeFile(
         path.join(__dirname, '../../tmp/state.json'),
         JSON.stringify(currentSpacesAll)
       );
+      console.log('Completed all target users.');
     });
   });
 };
