@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import path from 'path';
 import fs from 'fs/promises';
+import fsSync from 'fs';
 import axios from 'axios';
 import * as twitter from './twitter.js';
 import {
@@ -188,8 +189,29 @@ const main = () => {
   });
 };
 
-cron.schedule(
-  process.env.NOTIF_INTERVAL || '* */5 * * * *',
-  main
-);
+fs.readFile(
+  '/usr/data/notif/state.json',
+  'utf8'
+).then(() => {
+  console.log('state.json already exists.');
+}).catch(err => {
+  if(err.code === 'ENOENT') {
+    console.log('creating state.json ....');
+    fsSync.writeFileSync(
+      '/usr/data/notif/state.json',
+      '{}',
+      'utf8'
+    );
+    console.log('created empty state.json');
+  }
+  else {
+    console.log(err.code, '/', err.name, '/', err.message)
+  }
+  return;
+}).finally(() => {
+  cron.schedule(
+    process.env.NOTIF_INTERVAL || '* */5 * * * *',
+    main
+  );
+});
 
