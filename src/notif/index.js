@@ -13,7 +13,7 @@ const __dirname = path.dirname(new URL(import.meta.url).pathname)
 const main = () => {
   const usernameList = process.env.NOTIF_TARGETS.replace(/ /g, '').split(',');
   fs.readFile(
-    path.join(__dirname, '../../tmp/state.json'),
+    path.join(__dirname, '/usr/data/notif/state.json'),
     'utf8'
   ).then(_textPrevious => {
     const previousSpacesAll = JSON.parse(_textPrevious);
@@ -182,7 +182,7 @@ const main = () => {
     })).then(resultHandleUserAll => {
       // rewrite current state
       fs.writeFile(
-        path.join(__dirname, '../../tmp/state.json'),
+        path.join(__dirname, '/usr/data/notif/state.json'),
         JSON.stringify(currentSpacesAll)
       );
       console.log('Completed all target users.');
