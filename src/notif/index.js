@@ -48,6 +48,7 @@ const logger = log4js.getLogger();
 const errorLogger = log4js.getLogger('error');
 
 const main = () => {
+  logger.info('Start main process.');
   const usernameList = process.env.NOTIF_TARGETS.replace(/ /g, '').split(',');
   fs.readFile(
     '/usr/data/notif/state.json',
@@ -59,9 +60,9 @@ const main = () => {
     Promise.allSettled(usernameList.map(username => {
       return new Promise((resolveHandleUser, rejectHandleUser) => {
         return twitter.getSpacesByUsername(username).then(currentSpaces => {
+          logger.info(`Start processing @${username}`);
           const previousSpaces = previousSpacesAll[username] || { data: [] };
           if(!currentSpaces.data) currentSpaces.data = [];
-          //console.log(currentSpaces);
   
           // read previous state
           
@@ -81,7 +82,7 @@ const main = () => {
             if(created) flags.created.push(curr);
           }
   
-          console.log(JSON.stringify(flags, null, 2))
+          logger.info(`flags for @${username}: ${JSON.stringify(flags)}`);
           currentSpacesAll[username] = currentSpaces;
           
           Promise.allSettled([
@@ -103,7 +104,7 @@ const main = () => {
                             dest,
                             destDetails,
                           } = endpoint.data();
-                          console.log(dest, destDetails);
+                          logger.info(`dest: ${dest}, dest details: ${destDetails}`);
 
                           const config = {
                             headers: {
@@ -153,24 +154,24 @@ const main = () => {
                           }
                           
                           axios(config).then(() => {
-                            console.log(`Sent to ${config.url}. (id: ${endpoint.id})`);
+                            logger.info(`Sent to ${config.url}. (id: ${endpoint.id})`);
                             resolveNotif(endpoint.id);
                           }).catch(err => {
-                            console.error(`Failed to send to ${config.url}. (id: ${endpoint.id}).`, err);
+                            errorLogger.error(`Failed to send to ${config.url}. (id: ${endpoint.id}). / ${err.code} ${err.name} ${err.message}`);
                             rejectNotif(err);
                           });
                         });
                       })).then(notifResults => {
                         const resolvedCount = notifResults.filter(r => r.status === 'fulfilled').length;
                         const rejectedCount = notifResults.filter(r => r.status === 'rejected').length;
-                        console.log(`${resolvedCount}/${notifResults.length} notified. (${rejectedCount} failed)`);
+                        logger.info(`${resolvedCount}/${notifResults.length} notified. (${rejectedCount} failed)`);
                         resolveNotifAll({
                           resolvedCount,
                           rejectedCount,
                         });
                       });
                     }).catch(err => {
-                      console.error(err);
+                      errorLogger.error(`Failed to load endpoints from database. / ${err.code} ${err.name} ${err.message}`);
                       rejectNotifAll(err);
                     });
                   }),
@@ -180,10 +181,10 @@ const main = () => {
                       username,
                       startAt: FieldValue.serverTimestamp(),
                     }).then(() => {
-                      console.log(`Stored space ${id}.`);
+                      logger.info(`Stored space ${id}.`);
                       resolveStore(id);
                     }).catch(err => {
-                      console.error(`Failed to store space ${id}`, err);
+                      errorLogger.error(`Failed to store space ${id} / ${err.code} ${err.name} ${err.message}`);
                       rejectStore(err);
                     });
                   }),
@@ -202,16 +203,16 @@ const main = () => {
                 return firestore.doc(`spaces/${id}`).update({
                   endAt: FieldValue.serverTimestamp(),
                 }).then(() => {
-                  console.log(`Stored removed time of ${id}.`);
+                  logger.info(`Stored removed time of ${id}.`);
                   resolveHandleRemoved(id);
                 }).catch(err => {
-                  console.error(`Failed to store removed time of ${id}.`, err);
+                  errorLogger.error(`Failed to store removed time of ${id}. / ${err.code} ${err.name} ${err.message}`);
                   rejectHandleRemoved(err);
                 });
               });
             })),
           ]).then(handleUserResult => {
-            console.log(`Completed processing @${username}.`);
+            logger.info(`Completed processing @${username}.`);
             resolveHandleUser(username);
           });
         });
@@ -221,32 +222,37 @@ const main = () => {
       fs.writeFile(
         '/usr/data/notif/state.json',
         JSON.stringify(currentSpacesAll)
-      );
-      console.log('Completed all target users.');
+      ).catch(err => {
+        errorLogger.error(`Failed to update state.json. / ${err.code} ${err.name} ${err.message}`);
+      });
+      logger.info('Completed all target users.');
     });
   });
 };
 
+
+logger.info('Checking state.json');
 fs.readFile(
   '/usr/data/notif/state.json',
   'utf8'
 ).then(() => {
-  console.log('state.json already exists.');
+  logger.info('state.json already exists.');
 }).catch(err => {
   if(err.code === 'ENOENT') {
-    console.log('creating state.json ....');
+    logger.info('creating state.json....');
     fsSync.writeFileSync(
       '/usr/data/notif/state.json',
       '{}',
       'utf8'
     );
-    console.log('created empty state.json');
+    logger.info('created empty state.json');
   }
   else {
-    console.log(err.code, '/', err.name, '/', err.message)
+    errorLogger.error(`${err.code} ${err.name} ${err.message}`);
   }
   return;
 }).finally(() => {
+  logger.info('Start cron.');
   cron.schedule(
     process.env.NOTIF_INTERVAL || '* */5 * * * *',
     main
