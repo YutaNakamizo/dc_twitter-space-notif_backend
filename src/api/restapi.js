@@ -24,6 +24,13 @@ log4js.configure({
     },
   },
   categories: {
+    default: {
+      appenders: [
+        'console',
+        'system',
+      ],
+      level: 'all',
+    },
     api_default: {
       appenders: [
         'console',
@@ -38,11 +45,18 @@ log4js.configure({
       ],
       level: 'warn',
     },
+    api_express: {
+      appenders: [
+        'console',
+        'system',
+      ],
+      level: 'all',
+    },
   },
 });
 
-const logger = log4js.getLogger();
-const errorLogger = log4js.getLogger('error');
+const logger = log4js.getLogger('api_default');
+const errorLogger = log4js.getLogger('api_error');
 
 const app = express();
 app.use(express.json());
@@ -52,6 +66,11 @@ app.use(
     methods: [ 'GET', 'HEAD', 'POST', 'PUT', 'DELETE' ],
     preflightContinue: true,
   })
+);
+app.use(
+  log4js.connectLogger(
+    log4js.getLogger('api_express')
+  )
 );
 
 export const launch = () => {
@@ -163,7 +182,7 @@ export const launch = () => {
         uid,
       } = decodedToken;
 
-      console.log('[POST /api/endpoints]', uid, label, dest, JSON.stringify(destDetails));
+      logger.info(`Add endpoint / ${uid} ${label} ${dest} ${JSON.stringify(destDetails)}`);
 
       return firestore.collection('endpoints').add({
         owner: uid,
@@ -178,7 +197,7 @@ export const launch = () => {
           },
         });
       }).catch(err => {
-        console.error(err);
+        errorLogger.error(`Failed to add endpoint. / ${err.code} ${err.name} ${err.message}`);
         return res.status(500).send('Internal error occured');
       });
     });
@@ -191,7 +210,7 @@ export const launch = () => {
         uid,
       } = decodedToken;
 
-      console.log('[GET /api/endpoints]', uid);
+      logger.info(`Get endpoints / ${uid}`);
 
       const query = firestore.collection('endpoints').where('owner', '==', uid);
       return query.get().then(querySnapshot => {
@@ -208,7 +227,7 @@ export const launch = () => {
 
         return res.status(200).send(rtnEndpoints);
       }).catch(err => {
-        console.error(err);
+        errorLogger.error(`Failed to get endpoints of ${uid}. / ${err.code} ${err.name} ${err.message}`);
         return res.status(500).send('Internal error occured');
       });
     });
@@ -310,7 +329,7 @@ export const launch = () => {
           return res.status(403).send('You don\'t have access');
         }
 
-        console.log(`[PUT /api/endpoints/${id}]`, uid);
+        logger.info(`Update endpoint ${id} / ${uid}`);
 
         return targetDocRef.update({
           username,
@@ -324,7 +343,7 @@ export const launch = () => {
             },
           });
         }).catch(err => {
-          console.error(err);
+          errorLogger.error(`Failed to update endpoint ${id}. / ${err.code} ${err.name} ${err.message}`);
           return res.status(404).send('Endpoint does not exist');
         });
       });
@@ -353,7 +372,7 @@ export const launch = () => {
           return res.status(403).send('You don\'t have access');
         }
         
-        console.log(`[DELETE /api/endpoints/${id}]`, uid);
+        logger.info(`Delete endpoint ${id} / ${uid}`);
 
         return targetDocRef.delete().then(result => {
           return res.status(200).send({
@@ -362,7 +381,7 @@ export const launch = () => {
             },
           });
         }).catch(err => {
-          console.error(err);
+          errorLogger.error(`Failed to delete endpoint ${id}. / ${err.code} ${err.name} ${err.message}`);
           return res.status(500).send('Internal error occured');
         });
       });
@@ -372,7 +391,7 @@ export const launch = () => {
 
   // Listen
   app.listen(8080, () => {
-    console.log('REST API server started');
+    logger.info('REST API server started');
   });
 };
   
