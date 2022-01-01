@@ -24,14 +24,14 @@ log4js.configure({
     },
   },
   categories: {
-    default: {
+    api_default: {
       appenders: [
         'console',
         'system',
       ],
       level: 'all',
     },
-    error: {
+    api_error: {
       appenders: [
         'console',
         'error',
