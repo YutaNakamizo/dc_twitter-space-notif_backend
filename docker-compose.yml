@@ -10,7 +10,7 @@ services:
       - ./notif/.env
     volumes:
       - "./node_modules:/usr/src/notif-app/node_modules"
-      - "./data/notfi:/usr/data/notif"
+      - "./data/notif:/usr/data/notif"
       - "./data/common:/usr/data/common"
     restart: always
   api:
