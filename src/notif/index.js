@@ -27,6 +27,13 @@ log4js.configure({
     },
   },
   categories: {
+    default: {
+      appenders: [
+        'console',
+        'system',
+      ],
+      level: 'all',
+    },
     notif_default: {
       appenders: [
         'console',
