@@ -27,14 +27,14 @@ log4js.configure({
     },
   },
   categories: {
-    default: {
+    notif_default: {
       appenders: [
         'console',
         'system',
       ],
       level: 'all',
     },
-    error: {
+    notif_error: {
       appenders: [
         'console',
         'error',
@@ -44,8 +44,8 @@ log4js.configure({
   },
 });
 
-const logger = log4js.getLogger();
-const errorLogger = log4js.getLogger('error');
+const logger = log4js.getLogger('notif_default');
+const errorLogger = log4js.getLogger('notif_error');
 
 const main = () => {
   logger.info('Start main process.');
