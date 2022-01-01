@@ -7,7 +7,6 @@ RUN npm install
 
 COPY ./src/common ./src/common
 COPY ./src/notif ./src/notif
-RUN mkdir ./tmp && echo '{}' >> ./tmp/state.json
 
 CMD [ "node", "src/notif/index.js" ]
 

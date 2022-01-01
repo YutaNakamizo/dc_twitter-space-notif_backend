@@ -10,6 +10,8 @@ services:
       - ./notif/.env
     volumes:
       - "./node_modules:/usr/src/notif-app/node_modules"
+      - "./data/notfi:/usr/data/notif"
+      - "./data/common:/usr/data/common"
     restart: always
   api:
     build:
@@ -22,6 +24,8 @@ services:
       - "$PORT:8080"
     volumes:
       - "./node_modules:/usr/src/api-app/node_modules"
+      - "./data/api:/usr/data/api"
+      - "./data/common:/usr/data/common"
     restart: always
 
 networks:
