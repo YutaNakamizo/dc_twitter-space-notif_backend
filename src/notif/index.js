@@ -103,7 +103,7 @@ const main = () => {
                 Promise.allSettled([
                   new Promise((resolveNotifAll, rejectNotifAll) => {
                     // notify
-                    firestore.collection('endpoints').where('username', '==', username).get().then(querySnap => {
+                    firestore.collection('endpoints').where('usernames', 'array-containes', username).get().then(querySnap => {
                       if(querySnap.empty) resolveNotifAll();
                       Promise.allSettled(querySnap.docs.map(endpoint => {
                         return new Promise((resolveNotif, rejectNotif) => { 

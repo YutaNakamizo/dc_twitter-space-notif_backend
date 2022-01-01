@@ -103,7 +103,7 @@ export const launch = () => {
   //// Register
   app.post('/api/endpoints', (req, res) => {
     const {
-      username,
+      usernames,
       label,
       dest,
       destDetails,
@@ -111,8 +111,8 @@ export const launch = () => {
 
     if(
       (
-        typeof username !== 'string'
-        || username.trim() === ''
+        !Array.isArray(usernames)
+        || usernames.some(val => typeof val !== 'string' || val === '')
       ) || (
         typeof label !== 'string'
         || label.trim() === ''
@@ -186,7 +186,7 @@ export const launch = () => {
 
       return firestore.collection('endpoints').add({
         owner: uid,
-        username,
+        usernames,
         label,
         dest,
         destDetails,
@@ -240,7 +240,7 @@ export const launch = () => {
     } = req.params;
 
     const {
-      username,
+      usernames,
       label,
       dest,
       destDetails,
@@ -248,8 +248,8 @@ export const launch = () => {
 
     if(
       (
-        typeof username !== 'string'
-        || username.trim() === ''
+        !Array.isArray(usernames)
+        || usernames.some(val => typeof val !== 'string' || val === '')
       ) || (
         typeof label !== 'string'
         || label.trim() === ''
