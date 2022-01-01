@@ -1,10 +1,48 @@
 import express from 'express';
 import cors from 'cors';
 import validator from 'validator';
+import log4js from 'log4js';
 import {
   auth,
   firestore,
 } from '../common/firebase.js'; 
+
+log4js.configure({
+  appenders: {
+    console: {
+      type: 'console',
+    },
+    system: {
+      type: 'dateFile',
+      filename: '/usr/data/notif/log/system.log',
+      pattern: '-yyyy-MM-dd',
+    },
+    error: {
+      type: 'dateFile',
+      filename: '/usr/data/notif/log/error.log',
+      pattern: '-yyyy-MM-dd',
+    },
+  },
+  categories: {
+    default: {
+      appenders: [
+        'console',
+        'system',
+      ],
+      level: 'all',
+    },
+    error: {
+      appenders: [
+        'console',
+        'error',
+      ],
+      level: 'warn',
+    },
+  },
+});
+
+const logger = log4js.getLogger();
+const errorLogger = log4js.getLogger('error');
 
 const app = express();
 app.use(express.json());

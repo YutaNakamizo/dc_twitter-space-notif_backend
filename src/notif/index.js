@@ -3,11 +3,49 @@ import path from 'path';
 import fs from 'fs/promises';
 import fsSync from 'fs';
 import axios from 'axios';
+import log4js from 'log4js';
 import * as twitter from './twitter.js';
 import {
   firestore,
   FieldValue,
 } from '../common/firebase.js';
+
+log4js.configure({
+  appenders: {
+    console: {
+      type: 'console',
+    },
+    system: {
+      type: 'dateFile',
+      filename: '/usr/data/notif/log/system.log',
+      pattern: '-yyyy-MM-dd',
+    },
+    error: {
+      type: 'dateFile',
+      filename: '/usr/data/notif/log/error.log',
+      pattern: '-yyyy-MM-dd',
+    },
+  },
+  categories: {
+    default: {
+      appenders: [
+        'console',
+        'system',
+      ],
+      level: 'all',
+    },
+    error: {
+      appenders: [
+        'console',
+        'error',
+      ],
+      level: 'warn',
+    },
+  },
+});
+
+const logger = log4js.getLogger();
+const errorLogger = log4js.getLogger('error');
 
 const main = () => {
   const usernameList = process.env.NOTIF_TARGETS.replace(/ /g, '').split(',');
