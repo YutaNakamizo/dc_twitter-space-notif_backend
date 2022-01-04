@@ -332,7 +332,7 @@ export const launch = () => {
         logger.info(`Update endpoint ${id} / ${uid}`);
 
         return targetDocRef.update({
-          username,
+          usernames,
           label,
           dest,
           destDetails,
