@@ -179,6 +179,11 @@ export const launch = () => {
           default:
             return true;
         }
+      })() || (() => {
+        const targets = process.env.NOTIF_TARGETS.split(',');
+        return usernames.some(username => (
+          !targets.includes(username)
+        ));
       })()
     ) {
       return res.status(400).send('Bad request body');
@@ -316,6 +321,11 @@ export const launch = () => {
           default:
             return true;
         }
+      })() || (() => {
+        const targets = process.env.NOTIF_TARGETS.split(',');
+        return usernames.some(username => (
+          !targets.includes(username)
+        ));
       })()
     ) {
       return res.status(400).send('Bad request body');
