@@ -97,7 +97,14 @@ export const launch = () => {
       return res.status(200).send('Hello from Express.js with Firebase Auth Token!');
     });
   });
+  
 
+  // Target users
+  //// Provide acceptable target users
+  app.get('/api/acceptableTargetUsernames', (req, res) => {
+    const targets = process.env.NOTIF_TARGETS.split(',');
+    return res.status(200).send(targets);
+  });
 
   // Endpoint
   //// Register
