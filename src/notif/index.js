@@ -153,7 +153,7 @@ const notify = ({
                             dest,
                             destDetails,
                           } = endpoint.data();
-                          logger.info(`dest: ${dest}, dest details: ${destDetails}`);
+                          logger.info(`dest: ${dest}, dest details: ${JSON.stringify(destDetails)}`);
 
                           const config = {
                             headers: {
