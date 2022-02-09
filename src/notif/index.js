@@ -56,15 +56,57 @@ const errorLogger = log4js.getLogger('notif_error');
 
 const main = () => {
   logger.info('Start main process.');
-  const usernameList = process.env.NOTIF_TARGETS.replace(/ /g, '').split(',');
-  fs.readFile(
+
+  return fs.readFile(
+    '/usr/data/notif/main.pid',
+    'utf8'
+  ).then(() => {
+    logger.info('Another main process is running.');
+  }).catch(err => {
+    return new Promise((resolve, reject) => {
+      if(err.code === 'ENOENT') {
+        fs.writeFile(
+          '/usr/data/notif/main.pid',
+          String(process.pid)
+        ).catch(err => {
+          errorLogger.error(`Failed to create main.pid. ([${err.code} / ${err.name}] ${err.message})`);
+          reject(err);
+        }).then(() => {
+          const usernameList = process.env.NOTIF_TARGETS.replace(/ /g, '').split(',');
+          notify({
+            usernameList,
+          }).finally(() => {
+            fs.rm(
+              '/usr/data/notif/main.pid'
+            ).then(() => {
+              logger.info('Completed main process.');
+              resolve();
+            }).catch(err => {
+              errorLogger.error(`Failed to remove main.pid. ([${err.code} / ${err.name}] ${err.message})`);
+              reject(err);
+            });
+          });
+        });
+      }
+      else {
+        errorLogger.error(`Failed to read main.pid. ([${err.code} / ${err.name}] ${err.message})`);
+        reject(err);
+      }
+    });
+  });
+};
+
+const notify = ({
+  usernameList = [],
+}) => {
+  return fs.readFile(
     '/usr/data/notif/state.json',
     'utf8'
   ).then(_textPrevious => {
     const previousSpacesAll = JSON.parse(_textPrevious);
     const currentSpacesAll = {};
 
-    Promise.allSettled(usernameList.map(username => {
+    return Promise.allSettled(usernameList.map(username => {
       return new Promise((resolveHandleUser, rejectHandleUser) => {
         return twitter.getSpacesByUsername(username).then(currentSpaces => {
           logger.info(`Start processing @${username}`);
@@ -226,13 +268,14 @@ const main = () => {
       });
     })).then(resultHandleUserAll => {
       // rewrite current state
-      fs.writeFile(
+      return fs.writeFile(
         '/usr/data/notif/state.json',
         JSON.stringify(currentSpacesAll)
       ).catch(err => {
         errorLogger.error(`Failed to update state.json. / ${err.code} ${err.name} ${err.message}`);
+      }).then(() => {
+        logger.info('Completed all target users.');
       });
-      logger.info('Completed all target users.');
     });
   });
 };
