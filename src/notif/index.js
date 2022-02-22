@@ -73,6 +73,7 @@ const main = () => {
           reject(err);
         }).then(() => {
           const usernameList = process.env.NOTIF_TARGETS.replace(/ /g, '').split(',');
+          logger.info(`Target users: ${usernameList.join(', ')}`);
           notify({
             usernameList,
           }).finally(() => {
@@ -93,6 +94,9 @@ const main = () => {
         reject(err);
       }
     });
+  }).catch(err => {
+    errorLogger.error(`Mainprocess crashed. ([${err.code} / ${err.name}] ${err.message})`);
+    return;
   });
 };
 
@@ -102,168 +106,179 @@ const notify = ({
   return fs.readFile(
     '/usr/data/notif/state.json',
     'utf8'
-  ).then(_textPrevious => {
+  ).catch(err => {
+    errorLogger.error(`Failed to read state.json. ([${err.code} / ${err.name}] ${err.message})`);
+    throw err;
+  }).then(_textPrevious => {
     const previousSpacesAll = JSON.parse(_textPrevious);
     const currentSpacesAll = {};
 
     return Promise.allSettled(usernameList.map(username => {
-      return new Promise((resolveHandleUser, rejectHandleUser) => {
-        return twitter.getSpacesByUsername(username).then(currentSpaces => {
-          logger.info(`Start processing @${username}`);
-          const previousSpaces = previousSpacesAll[username] || { data: [] };
-          if(!currentSpaces.data) currentSpaces.data = [];
+      return new Promise(async (resolveHandleUser, rejectHandleUser) => {
+        const currentSpaces = await twitter.getSpacesByUsername(username).catch(err => {
+          errorLogger.error(`Failed to get Twitter Space information ([${err.code} / ${err.name}] ${err.message})`);
+          rejectHandleUser(err);
+          return null;
+        });
+        if(currentSpaces === null) return;
+
+        logger.info(`Start processing @${username}`);
+        const previousSpaces = previousSpacesAll[username] || { data: [] };
+        if(!currentSpaces.data) currentSpaces.data = [];
   
-          // read previous state
-          
-          if(!previousSpaces.data) previousSpaces.data = [];
+        // read previous state
+        
+        if(!previousSpaces.data) previousSpaces.data = [];
   
-          // compare state
-          const flags = {
-            removed: [],
-            created: [],
-          };
-          for(const prev of previousSpaces.data) {
-            const removed = currentSpaces.data.findIndex(curr => curr.id === prev.id) === -1;
-            if(removed) flags.removed.push(prev);
-          }
-          for(const curr of currentSpaces.data) {
-            const created = previousSpaces.data.findIndex(prev => prev.id === curr.id) === -1;
-            if(created) flags.created.push(curr);
-          }
+        // compare state
+        const flags = {
+          removed: [],
+          created: [],
+        };
+        for(const prev of previousSpaces.data) {
+          const removed = currentSpaces.data.findIndex(curr => curr.id === prev.id) === -1;
+          if(removed) flags.removed.push(prev);
+        }
+        for(const curr of currentSpaces.data) {
+          const created = previousSpaces.data.findIndex(prev => prev.id === curr.id) === -1;
+          if(created) flags.created.push(curr);
+        }
   
-          logger.info(`flags for @${username}: ${JSON.stringify(flags)}`);
-          currentSpacesAll[username] = currentSpaces;
-          
-          Promise.allSettled([
-            Promise.allSettled(flags.created.map(created => {
-              return new Promise((resolveHandleCreated, rejectHandleCreated) => {
-                const {
-                  id,
-                } = created;
-                
-                // handle created
-                Promise.allSettled([
-                  new Promise((resolveNotifAll, rejectNotifAll) => {
-                    // notify
-                    firestore.collection('endpoints').where('usernames', 'array-contains', username).get().then(querySnap => {
-                      if(querySnap.empty) resolveNotifAll();
-                      Promise.allSettled(querySnap.docs.map(endpoint => {
-                        return new Promise((resolveNotif, rejectNotif) => { 
+        logger.info(`flags for @${username}: ${JSON.stringify(flags)}`);
+        currentSpacesAll[username] = currentSpaces;
+        
+        Promise.allSettled([
+          Promise.allSettled(flags.created.map(created => {
+            return new Promise((resolveHandleCreated, rejectHandleCreated) => {
+              const {
+                id,
+              } = created;
+              
+              // handle created
+              Promise.allSettled([
+                new Promise(async (resolveNotifAll, rejectNotifAll) => {
+                  // notify
+                  const querySnap = await firestore.collection('endpoints').where('usernames', 'array-contains', username).get().catch(err => {
+                    errorLogger.error(`Failed to load endpoints from database. / ${err.code} ${err.name} ${err.message}`);
+                    rejectNotifAll(err);
+                    return null;
+                  });
+                  if(querySnap === null) return;
+
+                  if(querySnap.empty) resolveNotifAll();
+
+                  Promise.allSettled(querySnap.docs.map(endpoint => {
+                    return new Promise((resolveNotif, rejectNotif) => { 
+                      const {
+                        dest,
+                        destDetails,
+                      } = endpoint.data();
+                      logger.info(`dest: ${dest}, dest details: ${JSON.stringify(destDetails)}`);
+
+                      const config = {
+                        headers: {
+                        },
+                      };
+
+                      switch(dest) {
+                        case 'discord-webhook': {
                           const {
-                            dest,
-                            destDetails,
-                          } = endpoint.data();
-                          logger.info(`dest: ${dest}, dest details: ${JSON.stringify(destDetails)}`);
-
-                          const config = {
-                            headers: {
-                            },
+                            url,
+                          } = destDetails;
+                          config.headers['Content-Type'] = 'application/json';
+                          config.method = 'post';
+                          config.url = url;
+                          config.data = {
+                            content: `@${username} が Twitter Space を開始しました.\rhttps://twitter.com/i/spaces/${id}`,
                           };
-
-                          switch(dest) {
-                            case 'discord-webhook': {
-                              const {
-                                url,
-                              } = destDetails;
-                              config.headers['Content-Type'] = 'application/json';
-                              config.method = 'post';
-                              config.url = url;
+                          break;
+                        }
+                        case 'json': {
+                          const {
+                            method,
+                            url,
+                          } = destDetails;
+                          config.headers['Content-Type'] = 'application/json';
+                          config.method = method.toLowerCase();
+                          config.url = url;
+                          switch(method) {
+                            case 'POST': {
                               config.data = {
-                                content: `@${username} が Twitter Space を開始しました.\rhttps://twitter.com/i/spaces/${id}`,
+                                username,
+                                id,
                               };
-                              break;
                             }
-                            case 'json': {
-                              const {
-                                method,
-                                url,
-                              } = destDetails;
-                              config.headers['Content-Type'] = 'application/json';
-                              config.method = method.toLowerCase();
-                              config.url = url;
-                              switch(method) {
-                                case 'POST': {
-                                  config.data = {
-                                    username,
-                                    id,
-                                  };
-                                }
-                                case 'GET': {
-                                  config.params = {
-                                    username,
-                                    id,
-                                  };
-                                }
-                              }
-                              break;
-                            }
-                            default: {
-                              return;
+                            case 'GET': {
+                              config.params = {
+                                username,
+                                id,
+                              };
                             }
                           }
-                          
-                          axios(config).then(() => {
-                            logger.info(`Sent to ${config.url}. (id: ${endpoint.id})`);
-                            resolveNotif(endpoint.id);
-                          }).catch(err => {
-                            errorLogger.error(`Failed to send to ${config.url}. (id: ${endpoint.id}). / ${err.code} ${err.name} ${err.message}`);
-                            rejectNotif(err);
-                          });
-                        });
-                      })).then(notifResults => {
-                        const resolvedCount = notifResults.filter(r => r.status === 'fulfilled').length;
-                        const rejectedCount = notifResults.filter(r => r.status === 'rejected').length;
-                        logger.info(`${resolvedCount}/${notifResults.length} notified. (${rejectedCount} failed)`);
-                        resolveNotifAll({
-                          resolvedCount,
-                          rejectedCount,
-                        });
+                          break;
+                        }
+                        default: {
+                          return;
+                        }
+                      }
+                      
+                      axios(config).then(() => {
+                        logger.info(`Sent to ${config.url}. (id: ${endpoint.id})`);
+                        resolveNotif(endpoint.id);
+                      }).catch(err => {
+                        errorLogger.error(`Failed to send to ${config.url}. (id: ${endpoint.id}). / ${err.code} ${err.name} ${err.message}`);
+                        rejectNotif(err);
                       });
-                    }).catch(err => {
-                      errorLogger.error(`Failed to load endpoints from database. / ${err.code} ${err.name} ${err.message}`);
-                      rejectNotifAll(err);
                     });
-                  }),
-                  new Promise((resolveStore, rejectStore) => {
-                    // store start
-                    firestore.doc(`spaces/${id}`).set({
-                      username,
-                      startAt: FieldValue.serverTimestamp(),
-                    }).then(() => {
-                      logger.info(`Stored space ${id}.`);
-                      resolveStore(id);
-                    }).catch(err => {
-                      errorLogger.error(`Failed to store space ${id} / ${err.code} ${err.name} ${err.message}`);
-                      rejectStore(err);
+                  })).then(notifResults => {
+                    const resolvedCount = notifResults.filter(r => r.status === 'fulfilled').length;
+                    const rejectedCount = notifResults.filter(r => r.status === 'rejected').length;
+                    logger.info(`${resolvedCount}/${notifResults.length} notified. (${rejectedCount} failed)`);
+                    resolveNotifAll({
+                      resolvedCount,
+                      rejectedCount,
                     });
-                  }),
-                ]).then(handleCreatedResult => {
-                  resolveHandleCreated(id);
-                });
+                  });
+                }),
+                new Promise((resolveStore, rejectStore) => {
+                  // store start
+                  firestore.doc(`spaces/${id}`).set({
+                    username,
+                    startAt: FieldValue.serverTimestamp(),
+                  }).then(() => {
+                    logger.info(`Stored space ${id}.`);
+                    resolveStore(id);
+                  }).catch(err => {
+                    errorLogger.error(`Failed to store space ${id} / ${err.code} ${err.name} ${err.message}`);
+                    rejectStore(err);
+                  });
+                }),
+              ]).then(handleCreatedResult => {
+                resolveHandleCreated(id);
               });
-            })),
-            Promise.allSettled(flags.removed.map(removed => {
-              return new Promise((resolveHandleRemoved, rejectHandleRemoved) => {
-                const {
-                  id,
-                } = removed;
+            });
+          })),
+          Promise.allSettled(flags.removed.map(removed => {
+            return new Promise((resolveHandleRemoved, rejectHandleRemoved) => {
+              const {
+                id,
+              } = removed;
 
-                // store
-                return firestore.doc(`spaces/${id}`).update({
-                  endAt: FieldValue.serverTimestamp(),
-                }).then(() => {
-                  logger.info(`Stored removed time of ${id}.`);
-                  resolveHandleRemoved(id);
-                }).catch(err => {
-                  errorLogger.error(`Failed to store removed time of ${id}. / ${err.code} ${err.name} ${err.message}`);
-                  rejectHandleRemoved(err);
-                });
+              // store
+              firestore.doc(`spaces/${id}`).update({
+                endAt: FieldValue.serverTimestamp(),
+              }).then(() => {
+                logger.info(`Stored removed time of ${id}.`);
+                resolveHandleRemoved(id);
+              }).catch(err => {
+                errorLogger.error(`Failed to store removed time of ${id}. / ${err.code} ${err.name} ${err.message}`);
+                rejectHandleRemoved(err);
               });
-            })),
-          ]).then(handleUserResult => {
-            logger.info(`Completed processing @${username}.`);
-            resolveHandleUser(username);
-          });
+            });
+          })),
+        ]).then(handleUserResult => {
+          logger.info(`Completed processing @${username}.`);
+          resolveHandleUser(username);
         });
       });
     })).then(resultHandleUserAll => {
@@ -273,8 +288,10 @@ const notify = ({
         JSON.stringify(currentSpacesAll)
       ).catch(err => {
         errorLogger.error(`Failed to update state.json. / ${err.code} ${err.name} ${err.message}`);
+        throw err;
       }).then(() => {
         logger.info('Completed all target users.');
+        return;
       });
     });
   });
