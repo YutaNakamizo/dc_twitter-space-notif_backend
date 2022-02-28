@@ -111,7 +111,7 @@ const notify = ({
     throw err;
   }).then(_textPrevious => {
     const previousSpacesAll = JSON.parse(_textPrevious);
-    const currentSpacesAll = {};
+    const currentSpacesAll = previousSpacesAll;
 
     return Promise.allSettled(usernameList.map(username => {
       return new Promise(async (resolveHandleUser, rejectHandleUser) => {
