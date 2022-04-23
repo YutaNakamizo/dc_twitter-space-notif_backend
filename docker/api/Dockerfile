@@ -1,12 +1,18 @@
-FROM node:14-alpine
+FROM node:14.19.1-alpine3.15
 
-WORKDIR /usr/src/api-app
+WORKDIR /usr/src/api-app/
 
 COPY ./package*.json ./
-RUN npm install
+RUN npm ci
 
-COPY ./src/common ./src/common
-COPY ./src/api ./src/api
+COPY ./src/ ./src/
 
-CMD [ "node", "src/api/index.js" ]
+ENV TZ="Asia/Tokyo"
+
+ENV GOOGLE_APPLICATION_CREDENTIALS=""
+ENV NOTIF_TARGETS=""
+
+ENV ALLOW_ORIGIN=""
+
+CMD [ "node", "src/index.js" ]
 
