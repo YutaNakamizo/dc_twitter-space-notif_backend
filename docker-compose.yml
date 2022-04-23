@@ -2,31 +2,9 @@ version: '3'
 
 services:
   notif:
-    build:
-      context: .
-      dockerfile: Dockerfile-notif
-    env_file:
-      - ./common/.env
-      - ./notif/.env
-    volumes:
-      - "./node_modules:/usr/src/notif-app/node_modules"
-      - "./data/notif:/usr/data/notif"
-      - "./data/common:/usr/data/common"
-    restart: always
+    build: ./docker/notif
   api:
-    build:
-      context: .
-      dockerfile: Dockerfile-api
-    env_file:
-      - ./common/.env
-      - ./api/.env
-    ports:
-      - "$PORT:8080"
-    volumes:
-      - "./node_modules:/usr/src/api-app/node_modules"
-      - "./data/api:/usr/data/api"
-      - "./data/common:/usr/data/common"
-    restart: always
+    build: ./docker/api
 
 networks:
   notif_net:
