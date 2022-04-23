@@ -1,12 +1,19 @@
-FROM node:14-alpine
+FROM node:14.19.1-alpine3.15
 
-WORKDIR /usr/src/notif-app
+WORKDIR /usr/src/notif-app/
 
 COPY ./package*.json ./
-RUN npm install
+RUN npm ci
 
-COPY ./src/common ./src/common
-COPY ./src/notif ./src/notif
+COPY ./src/ ./src/
 
-CMD [ "node", "src/notif/index.js" ]
+ENV TZ="Asia/Tokyo"
+
+ENV GOOGLE_APPLICATION_CREDENTIALS=""
+ENV NOTIF_TARGETS=""
+
+ENV NOTIF_TWITTER_KEY=""
+ENV NOTIF_INTERVAL="* */5 * * * *"
+
+CMD [ "node", "src/index.js" ]
 

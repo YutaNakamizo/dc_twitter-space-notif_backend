@@ -14,12 +14,12 @@ log4js.configure({
     },
     system: {
       type: 'dateFile',
-      filename: '/usr/data/notif/log/system.log',
+      filename: '/var/log/api-app/system.log',
       pattern: '-yyyy-MM-dd',
     },
     error: {
       type: 'dateFile',
-      filename: '/usr/data/notif/log/error.log',
+      filename: '/var/log/api-app/error.log',
       pattern: '-yyyy-MM-dd',
     },
   },
@@ -411,4 +411,4 @@ export const launch = () => {
     logger.info('REST API server started');
   });
 };
-  
+
