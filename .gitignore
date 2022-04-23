@@ -4,5 +4,5 @@ node_modules/
 /tmp/
 /data
 
-docker-compose.custom.ya?ml
+docker-compose.custom.yml
 

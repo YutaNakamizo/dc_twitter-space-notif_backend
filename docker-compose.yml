@@ -5,8 +5,13 @@ services:
     build: ./docker/notif/
     volumes:
       - "./data/notif/log/:/var/log/notif-app/"
+      - "./data/notif/config.yml:/usr/src/notif-app/config.yml"
+      - "./data/common/firebase.d/:/usr/src/notif-app/firebase.d/"
+      - "./data/common/twitter.d/:/usr/src/notif-app/twitter.d/"
   twsnotif_api:
     build: ./docker/api/
     volumes:
       - "./data/api/log/:/var/log/api-app/"
+      - "./data/api/config.yml:/usr/src/api-app/config.yml"
+      - "./data/common/firebase.d/:/usr/src/api-app/firebase.d/"
 
