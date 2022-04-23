@@ -8,7 +8,7 @@ import * as twitter from './twitter.js';
 import {
   firestore,
   FieldValue,
-} from '../common/firebase.js';
+} from './firebase.js';
 
 log4js.configure({
   appenders: {

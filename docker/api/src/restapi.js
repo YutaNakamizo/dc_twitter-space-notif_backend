@@ -5,7 +5,7 @@ import log4js from 'log4js';
 import {
   auth,
   firestore,
-} from '../common/firebase.js'; 
+} from './firebase.js'; 
 
 log4js.configure({
   appenders: {
